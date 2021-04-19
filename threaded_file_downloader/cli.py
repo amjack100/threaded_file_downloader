@@ -1,47 +1,36 @@
 """Console script for threaded_file_downloader."""
-import argparse
 import sys
 import threading
 import requests
+import click
+import os
 
+def download(url: str, outdir):
 
-def main():
-    """Console script for threaded_file_downloader."""
-    parser = argparse.ArgumentParser()
+    bytes_: bytes = requests.get(url).content
 
-    parser = argparse.ArgumentParser(description="Request urls and save contents")
+    filename = url.rsplit("/", 1)[1]
 
-    parser.add_argument(
-        "infile",
-        type=argparse.FileType("r"),
-        help="Input file containing urls seperated by newline",
-    )
-
-    parser.add_argument(
-        "outdir",
-        type=str,
-        help="Output directory",
-    )
-
-    args = parser.parse_args()
-
-    urls = [x for x in args.infile.readlines() if x != ""]
-
-    def download(url: str):
-        bytes_: bytes = requests.get(url).content
-
-        filename = url.rsplit("/", 1)[1]
-
-        f = open(filename, "wb")
+    outfile = os.path.join(outdir, filename)
+    
+    with open(outfile, 'wb') as f:
         f.write(bytes_)
-        f.close()
 
-    for url in urls:
 
-        x = threading.Thread(target=download, args=(url.strip("\n"),))
-        x.start()
+@click.command(help="Download a list of urls from a text file (seperated by line)")
+@click.argument('input-file')
+@click.argument('output-dir')
+def main(input_file, output_dir):
 
-        print("Arguments: " + str(args._))
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    with open(input_file) as f:
+        
+        for line in f.readlines():
+            if line != "":
+                x = threading.Thread(target=download, args=(line.strip("\n"), output_dir))
+                x.start()
 
     return 0
 
